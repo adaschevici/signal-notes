@@ -1,56 +1,51 @@
-from shiny import App, render, ui
-import asyncio
+from shiny import App, render, ui, reactive
+import numpy as np
+import pandas as pd
+import yfinance as yf
+from loguru import logger
 
+# stock_data: pd.DataFrame = yf.download(
+#     tickers="GOOGL AAPL MSFT META NVDA",
+#     period="1d",
+#     interval="1m",
+#     group_by="ticker",
+#     auto_adjust=True,
+#     prepost=True,
+#     threads=True,
+#     proxy=None,
+# )
 # Define the app UI
 app_ui = ui.page_fluid(
-    ui.h2("Simple Shiny Dropdown Example"),
+    ui.h2("Stock Data Viewer"),
+    ui.input_dark_mode(),
     ui.input_select(
         id="dropdown",
         label="Choose an option:",
-        choices={
-            "Option 1": "Option 1",
-            "Option 2": "Option 2",
-            "Option 3": "Option 3",
-        },
+        choices=("GOOGL", "AAPL", "MSFT", "META", "NVDA"),
     ),
-    ui.input_switch(
-        id="dark_mode_toggle",
-        label="Enable Dark Mode",
+    ui.input_date_range(
+        "date_range", "Select Date Range:", start="2023-01-01", end="2023-12-31"
     ),
-    ui.output_text_verbatim("selected_value"),
-    ui.tags.head(
-        ui.tags.style(
-            """
-            .dark-mode {
-                background-color: #121212;
-                color: #ffffff;
-            }
-            """
-        )
-    ),
-    ui.tags.script(
-        """
-        $(document).on("shiny:inputchanged", function(event) {
-            console.log(event);
-            if (event.name === "dark_mode_toggle") {
-                if (event.value) {
-                    document.body.classList.add("dark-mode");
-                } else {
-                    document.body.classList.remove("dark-mode");
-                }
-            }
-        });
-        """
-    ),
+    ui.input_action_button("load_data", "Load Data"),
+    ui.output_data_frame("stock_data"),
 )
 
 
 # Define the server logic
 def server(input, output, session):
     @output
-    @render.text
-    def selected_value():
-        return f"You selected: {input.dropdown.get()}"
+    @render.data_frame
+    @reactive.event(input.load_data)
+    def stock_data():
+        stock_hist = yf.download(
+            input.dropdown.get(),
+            start="2023-01-01",
+            end="2024-11-01",
+            group_by="ticker",
+        )
+        stock_hist.reset_index(inplace=True)
+        logger.info(stock_hist.head())
+        return render.DataTable(stock_hist)
 
 
 # Create the app
