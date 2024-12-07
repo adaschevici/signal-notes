@@ -43,9 +43,11 @@ def server(input, output, session):
             end="2024-11-01",
             group_by="ticker",
         )
+        if isinstance(stock_hist.columns, pd.MultiIndex):
+            stock_hist.columns = [col[1] for col in stock_hist.columns]
         stock_hist.reset_index(inplace=True)
         logger.info(stock_hist.head())
-        return render.DataTable(stock_hist)
+        return render.DataTable(stock_hist.head())
 
 
 # Create the app
